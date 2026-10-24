@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="fr-CA">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>Signets · les favoris X de Guy</title>
+<meta name="description" content="Fil des signets X de Guy, filtrable par catégorie, date, auteur, type et langue.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%231d9bf0'/%3E%3Cpath d='M8 5h8v14l-4-3-4 3z' fill='white'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skip" href="#feed">Aller au fil</a>
+<div class="app">
+  <aside class="nav" aria-label="Catégories">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 4h10v16l-5-3.6L7 20z"/></svg></span>
+      <span class="brand-name">Signets</span>
+    </div>
+    <h2 class="nav-title">Catégories</h2>
+    <ul id="cats" class="cats" role="list"></ul>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="topbar-row">
+        <div class="brand brand-mobile">
+          <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 4h10v16l-5-3.6L7 20z"/></svg></span>
+          <span class="brand-name">Signets</span>
+        </div>
+        <label class="search">
+          <span class="sr-only">Rechercher</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 3a7.5 7.5 0 0 1 5.9 12.1l4.2 4.2-1.4 1.4-4.2-4.2A7.5 7.5 0 1 1 10.5 3zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11z"/></svg>
+          <input id="q" type="search" placeholder="Rechercher sujet, description, auteur…" autocomplete="off">
+        </label>
+        <button id="openFilters" class="btn-icon filters-toggle" aria-controls="filters" aria-expanded="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18v2H3zm4 5h10v2H7zm3 5h4v2h-4z"/></svg>
+          <span>Filtres</span><span id="filterBadge" class="badge-dot" hidden></span>
+        </button>
+      </div>
+      <div class="statusbar">
+        <p id="count" class="count" aria-live="polite">Chargement…</p>
+        <label class="sort"><span class="sr-only">Trier</span>
+          <select id="sort">
+            <option value="recent">Plus récents</option>
+            <option value="ancien">Plus anciens</option>
+            <option value="jaime">Plus aimés</option>
+          </select>
+        </label>
+      </div>
+      <div id="catsMobile" class="cats-mobile" role="group" aria-label="Catégories"></div>
+      <div id="active" class="active-filters"></div>
+    </header>
+
+    <section id="feed" class="feed" aria-label="Signets"></section>
+    <div class="more-wrap"><button id="more" class="btn-more" hidden>Charger plus</button></div>
+    <p id="empty" class="empty" hidden>Aucun signet ne correspond à ces filtres.<br><button class="link" data-reset>Réinitialiser les filtres</button></p>
+
+    <footer class="footer">
+      <p>© GTR Technologies Inc. · Tous droits réservés.</p>
+      <p>Site réalisé par la GTR-Teams</p>
+    </footer>
+  </main>
+
+  <aside id="filters" class="filters" aria-label="Filtres">
+    <div class="filters-head">
+      <h2>Filtres</h2>
+      <button id="closeFilters" class="btn-icon close" aria-label="Fermer les filtres"><svg viewBox="0 0 24 24"><path d="M6.4 5 12 10.6 17.6 5 19 6.4 13.4 12 19 17.6 17.6 19 12 13.4 6.4 19 5 17.6 10.6 12 5 6.4z"/></svg></button>
+    </div>
+
+    <div class="panel">
+      <h3>Date de publication</h3>
+      <div class="presets" id="presets">
+        <button data-preset="30">30 jours</button>
+        <button data-preset="90">3 mois</button>
+        <button data-preset="2026">2026</button>
+        <button data-preset="2025">2025</button>
+        <button data-preset="2024">2024</button>
+        <button data-preset="2023">2023</button>
+      </div>
+      <div class="dates">
+        <label>Du<input id="from" type="date"></label>
+        <label>Au<input id="to" type="date"></label>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3><label for="byInput">Soumis par</label></h3>
+      <div class="combo" id="combo">
+        <div id="bySel" class="by-selected" hidden></div>
+        <input id="byInput" type="text" role="combobox" aria-expanded="false" aria-controls="byList" aria-autocomplete="list" placeholder="Chercher un compte…" autocomplete="off">
+        <ul id="byList" class="by-list" role="listbox" hidden></ul>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Type</h3>
+      <div id="types" class="toggles"></div>
+    </div>
+
+    <div class="panel">
+      <h3>Langue</h3>
+      <div id="langs" class="toggles"></div>
+    </div>
+
+    <div class="panel actions">
+      <button class="btn-reset" data-reset>Réinitialiser</button>
+      <button id="applyFilters" class="btn-primary">Voir les résultats</button>
+    </div>
+    <p class="meta" id="meta"></p>
+  </aside>
+</div>
+<div id="scrim" class="scrim" hidden></div>
+<script src="app.js"></script>
+</body>
+</html>
