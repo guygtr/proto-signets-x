@@ -12,19 +12,10 @@
 <body>
 <a class="skip" href="#feed">Aller au fil</a>
 <div class="app">
-  <aside class="nav" aria-label="Catégories">
-    <div class="brand">
-      <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 4h10v16l-5-3.6L7 20z"/></svg></span>
-      <span class="brand-name">Signets</span>
-    </div>
-    <h2 class="nav-title">Catégories</h2>
-    <ul id="cats" class="cats" role="list"></ul>
-  </aside>
-
   <main class="main">
     <header class="topbar">
       <div class="topbar-row">
-        <div class="brand brand-mobile">
+        <div class="brand">
           <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 4h10v16l-5-3.6L7 20z"/></svg></span>
           <span class="brand-name">Signets</span>
         </div>
@@ -39,7 +30,14 @@
         </button>
       </div>
       <div class="statusbar">
-        <p id="count" class="count" aria-live="polite">Chargement…</p>
+        <div class="catdd" id="catdd">
+          <span id="catLabel" class="sr-only">Catégorie</span>
+          <button id="catBtn" class="catdd-btn" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="catList" aria-labelledby="catLabel catBtn">
+            <span class="dot" id="catBtnDot" hidden></span><span class="lbl" id="catBtnLbl">Toutes</span><span class="n" id="catBtnN"></span>
+            <svg class="caret" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5z"/></svg>
+          </button>
+          <ul id="catList" class="catdd-list" role="listbox" aria-labelledby="catLabel" tabindex="-1" hidden></ul>
+        </div>
         <label class="sort"><span class="sr-only">Trier</span>
           <select id="sort">
             <option value="recent">Plus récents</option>
@@ -48,7 +46,7 @@
           </select>
         </label>
       </div>
-      <div id="catsMobile" class="cats-mobile" role="group" aria-label="Catégories"></div>
+      <p id="count" class="count" aria-live="polite">Chargement…</p>
       <div id="active" class="active-filters"></div>
     </header>
 

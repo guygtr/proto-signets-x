@@ -5,16 +5,15 @@
   const $ = (s, r = document) => r.querySelector(s);
   const el = {
     q: $("#q"), sort: $("#sort"), feed: $("#feed"), more: $("#more"), empty: $("#empty"), count: $("#count"),
-    cats: $("#cats"), catsM: $("#catsMobile"), active: $("#active"), from: $("#from"), to: $("#to"),
+    catBtn: $("#catBtn"), catList: $("#catList"), catBtnLbl: $("#catBtnLbl"), catBtnN: $("#catBtnN"), catBtnDot: $("#catBtnDot"), active: $("#active"), from: $("#from"), to: $("#to"),
     presets: $("#presets"), types: $("#types"), langs: $("#langs"), byInput: $("#byInput"), byList: $("#byList"),
     bySel: $("#bySel"), filters: $("#filters"), scrim: $("#scrim"), badge: $("#filterBadge"), meta: $("#meta")
   };
-  const CAT_HUES = [204, 330, 0, 45, 265, 190, 150, 100, 25, 290, 170];
   const nf = new Intl.NumberFormat("fr-CA");
   const nfc = new Intl.NumberFormat("fr-CA", { notation: "compact", maximumFractionDigits: 1 });
   const df = new Intl.DateTimeFormat("fr-CA", { day: "numeric", month: "short", year: "numeric" });
 
-  let all = [], cats = [], catColor = {}, authors = [], results = [], shown = 0;
+  let all = [], cats = [], catColor = {}, catActive = -1, authors = [], results = [], shown = 0;
   const st = { q: "", cat: "", from: "", to: "", by: "", type: [], lang: [], sort: "recent", preset: "" };
 
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -24,6 +23,22 @@
   const hash = s => { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) | 0; return Math.abs(h); };
   const initials = h => (h.replace(/^@/, "").replace(/[^A-Za-z0-9]/g, "").slice(0, 2) || "?").toUpperCase();
   const avatar = h => `<span class="avatar" aria-hidden="true" style="background:hsl(${hash(h) % 360} 55% 38%)">${esc(initials(h))}</span>`;
+  const NO_CAT = "Sans catégorie";
+  // Couleur stable par nom de catégorie (hash) : aucune liste codée en dur, une nouvelle catégorie reçoit sa propre teinte.
+  // Palette de teintes contrastées ; chaque nom choisit sa case par hash (sondage linéaire pour éviter les doublons).
+  // Au-delà de la palette, repli sur une teinte calculée par hash.
+  const PALETTE = [204, 340, 48, 145, 270, 10, 180, 95, 300, 28, 228, 160, 320, 65];
+  const fnv = s => { let h = 2166136261; for (const c of s) { h ^= c.codePointAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
+  function assignColors(names) {
+    const used = new Set(), out = {};
+    [...names].sort((a, b) => a.localeCompare(b, "fr")).forEach(n => {
+      let i = fnv(norm(n)) % PALETTE.length, k = 0;
+      while (used.has(i) && k < PALETTE.length) { i = (i + 1) % PALETTE.length; k++; }
+      if (k < PALETTE.length) { used.add(i); out[n] = `hsl(${PALETTE[i]} 80% 66%)`; }
+      else out[n] = `hsl(${fnv(n) % 360} 70% 65%)`;
+    });
+    return out;
+  }
   const countBy = (arr, k) => arr.reduce((m, x) => (m[x[k]] = (m[x[k]] || 0) + 1, m), {});
 
   /* ---------- État ↔ URL ---------- */
@@ -105,13 +120,42 @@
     el.more.hidden = shown >= results.length;
     el.more.textContent = `Charger plus (${nf.format(results.length - shown)} restants)`;
   }
-  function renderCats() {
+  /* Liste déroulante des catégories, construite à partir des données */
+  function catOptions() {
     const base = filtered("cat"); const cnt = countBy(base, "categorie");
-    const btn = (c, label, n) => `<button class="cat-btn" data-cat="${esc(c)}" aria-pressed="${st.cat === c}">${c ? `<span class="dot" style="background:${catColor[c]}"></span>` : ""}<span class="lbl">${esc(label)}</span><span class="n">${nf.format(n)}</span></button>`;
-    const html = [btn("", "Toutes", base.length), ...cats.map(c => btn(c, c, cnt[c] || 0))];
-    el.cats.innerHTML = html.map(h => `<li>${h}</li>`).join("");
-    el.catsM.innerHTML = html.join("");
+    return [{ v: "", label: "Toutes", n: base.length }, ...cats.map(c => ({ v: c, label: c, n: cnt[c] || 0 }))];
   }
+  function renderCats() {
+    const opts = catOptions(); const cur = opts.find(o => o.v === st.cat) || opts[0];
+    el.catBtnLbl.textContent = cur.label; el.catBtnN.textContent = nf.format(cur.n);
+    el.catBtnDot.hidden = !cur.v; el.catBtnDot.style.background = cur.v ? catColor[cur.v] : "";
+    el.catList.innerHTML = opts.map((o, i) => `<li role="option" id="cat-${i}" data-cat="${esc(o.v)}" aria-selected="${o.v === st.cat}" class="${o.n ? "" : "zero"}${i === catActive ? " active" : ""}"><span class="dot${o.v ? "" : " dot-all"}" style="${o.v ? `background:${catColor[o.v]}` : ""}"></span><span class="lbl">${esc(o.label)}</span><span class="n">${nf.format(o.n)}</span></li>`).join("");
+  }
+  function setCatActive(i) {
+    const items = [...el.catList.children]; if (!items.length) return;
+    catActive = Math.max(0, Math.min(i, items.length - 1));
+    items.forEach((li, j) => li.classList.toggle("active", j === catActive));
+    el.catList.setAttribute("aria-activedescendant", items[catActive].id);
+    items[catActive].scrollIntoView({ block: "nearest" });
+  }
+  function openCat(open) {
+    el.catList.hidden = !open; el.catBtn.setAttribute("aria-expanded", open);
+    if (open) { const i = [...el.catList.children].findIndex(li => li.getAttribute("aria-selected") === "true"); el.catList.focus(); setCatActive(i < 0 ? 0 : i); }
+    else catActive = -1;
+  }
+  function pickCat(v, refocus = true) { st.cat = v; openCat(false); update(); if (refocus) el.catBtn.focus(); }
+  el.catBtn.addEventListener("click", () => openCat(el.catList.hidden));
+  el.catBtn.addEventListener("keydown", e => { if (["ArrowDown", "ArrowUp"].includes(e.key)) { e.preventDefault(); openCat(true); } });
+  el.catList.addEventListener("keydown", e => {
+    const items = [...el.catList.children];
+    if (e.key === "ArrowDown") { e.preventDefault(); setCatActive(catActive + 1); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setCatActive(catActive - 1); }
+    else if (e.key === "Home") { e.preventDefault(); setCatActive(0); }
+    else if (e.key === "End") { e.preventDefault(); setCatActive(items.length - 1); }
+    else if (e.key === "Enter" || e.key === " ") { e.preventDefault(); if (items[catActive]) pickCat(items[catActive].dataset.cat); }
+    else if (e.key === "Escape" || e.key === "Tab") { if (e.key === "Escape") e.preventDefault(); openCat(false); if (e.key === "Escape") el.catBtn.focus(); }
+    else if (e.key.length === 1) { const k = norm(e.key); const j = items.findIndex((li, n) => n > catActive && norm(li.textContent).startsWith(k)); const f = j > -1 ? j : items.findIndex(li => norm(li.textContent).startsWith(k)); if (f > -1) setCatActive(f); }
+  });
   function renderToggles(box, key, field, values) {
     const cnt = countBy(filtered(key), field);
     box.innerHTML = values.map(v => `<button data-${key}="${esc(v)}" aria-pressed="${st[key].includes(v)}">${esc(v)}<span class="n">${nf.format(cnt[v] || 0)}</span></button>`).join("");
@@ -145,6 +189,7 @@
     el.presets.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", b.dataset.preset === st.preset));
   }
   function update() {
+    if (st.cat && !cats.includes(st.cat)) st.cat = ""; // catégorie disparue (ex. lien ancien) → « Toutes »
     results = sortList(filtered());
     shown = 0; el.feed.innerHTML = ""; renderMore();
     el.count.innerHTML = `<b>${nf.format(results.length)}</b> signet${results.length > 1 ? "s" : ""}${results.length !== all.length ? ` sur ${nf.format(all.length)}` : ""}`;
@@ -185,11 +230,13 @@
   function closeByList() { el.byList.hidden = true; el.byInput.setAttribute("aria-expanded", "false"); }
   function pickBy(h) { st.by = h; el.byInput.value = ""; closeByList(); update(); }
   document.addEventListener("click", e => {
-    const t = e.target.closest("button,li[data-by]"); 
+    const t = e.target.closest("button,li[data-by],li[data-cat]");
     if (!e.target.closest("#combo")) closeByList();
+    if (!e.target.closest("#catdd")) openCat(false);
     if (!t) return;
     if (t.matches("li[data-by]")) return pickBy(t.dataset.by);
-    if (t.dataset.cat !== undefined) { st.cat = st.cat === t.dataset.cat && t.classList.contains("chip") ? "" : t.dataset.cat; update(); if (t.classList.contains("chip")) window.scrollTo({ top: 0 }); return; }
+    if (t.matches("li[data-cat]")) return pickCat(t.dataset.cat);
+    if (t.classList.contains("chip")) { st.cat = st.cat === t.dataset.cat ? "" : t.dataset.cat; update(); window.scrollTo({ top: 0 }); return; }
     if (t.dataset.type !== undefined) return toggle("type", t.dataset.type);
     if (t.dataset.lang !== undefined) return toggle("lang", t.dataset.lang);
     if (t.dataset.preset !== undefined) { if (st.preset === t.dataset.preset) { st.preset = ""; st.from = st.to = ""; } else applyPreset(t.dataset.preset); return update(); }
@@ -205,14 +252,14 @@
     if (t.id === "closeFilters" || t.id === "applyFilters") return openFilters(false);
   });
   el.scrim.addEventListener("click", () => openFilters(false));
-  document.addEventListener("keydown", e => { if (e.key === "Escape" && el.filters.classList.contains("open")) openFilters(false); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && !el.catList.hidden) { openCat(false); el.catBtn.focus(); return; } if (e.key === "Escape" && el.filters.classList.contains("open")) openFilters(false); });
 
   /* ---------- Chargement ---------- */
   fetch("data/signets.json", { cache: "no-cache" }).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(d => {
-    all = d.signets.map(x => ({ ...x, _s: norm(`${x.sujet} ${x.description} ${x.soumisPar}`) }));
+    all = d.signets.map(x => ({ ...x, categorie: String(x.categorie || "").trim() || NO_CAT, _s: norm(`${x.sujet} ${x.description} ${x.soumisPar}`) }));
     const cc = countBy(all, "categorie");
     cats = Object.keys(cc).sort((a, b) => cc[b] - cc[a] || a.localeCompare(b, "fr"));
-    cats.forEach((c, i) => catColor[c] = `hsl(${CAT_HUES[i % CAT_HUES.length]} 80% 65%)`);
+    catColor = assignColors(cats);
     const lc = countBy(all, "langue"); langs = Object.keys(lc).sort((a, b) => lc[b] - lc[a]);
     const am = {};
     all.forEach(x => { (am[x.handle] ||= { handle: x.handle, nom: x.nom, n: 0 }).n++; });

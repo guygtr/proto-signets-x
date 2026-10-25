@@ -14,7 +14,7 @@ Aucun logo officiel de X n'est utilisé : la marque « Signets » est une créat
 
 ### Filtres
 
-- **Catégorie** (11 catégories, avec le nombre de signets de chacune)
+- **Catégorie** : une liste déroulante (« Toutes (948) » puis chaque catégorie avec sa pastille de couleur et son nombre de signets). Les nombres suivent les autres filtres. Utilisable à la souris, au toucher et au clavier (↑ ↓, Début, Fin, Entrée, Échap, première lettre). Cliquer la catégorie d'une carte règle aussi la liste.
 - **Date de publication** : du / au, et raccourcis (30 jours, 3 mois, 2026, 2025, 2024, 2023)
 - **Soumis par** : liste de comptes avec recherche (358 comptes)
 - **Recherche texte** dans le sujet, la description et le compte (sans tenir compte des accents)
@@ -24,13 +24,25 @@ Aucun logo officiel de X n'est utilisé : la marque « Signets » est une créat
 - Les filtres sont gardés dans l'URL : on peut partager ou mettre en favori une vue filtrée
 - Affichage par lots de 30 avec « Charger plus » pour rester rapide
 
-Sur mobile, les catégories défilent en puces sous la barre de recherche et les autres filtres s'ouvrent dans un tiroir.
+Sur mobile, la liste des catégories reste sous la barre de recherche et les autres filtres s'ouvrent dans un tiroir. Testé à 1280×800 (bureau), 768 px (tablette) et 390×844 (mobile) : aucun débordement, liste entièrement visible.
+
+### Catégories 100 % dynamiques
+
+Le bot X Signets peut ajouter, renommer ou retirer des catégories. Rien n'est codé en dur : la liste, les nombres et les couleurs sont calculés à partir de `data/signets.json` à chaque chargement.
+
+- Couleur stable par nom : chaque catégorie choisit une teinte dans une palette contrastée grâce à un hash de son nom (une teinte calculée sert de repli s'il y a plus de catégories que de couleurs).
+- Un signet sans catégorie est classé dans « Sans catégorie ».
+- Si un lien partagé pointe vers une catégorie qui n'existe plus, le site revient simplement à « Toutes ».
 
 ![Filtre catégorie + langue](screenshots/desktop-filtre-espace-francais.png)
 
-| Mobile | Tiroir de filtres | Filtre appliqué |
-|---|---|---|
-| ![](screenshots/mobile-accueil.png) | ![](screenshots/mobile-tiroir-filtres.png) | ![](screenshots/mobile-filtre-reponses-2026.png) |
+![Liste déroulante des catégories (bureau)](screenshots/desktop-liste-categories.png)
+
+| Mobile | Liste des catégories | Tiroir de filtres | Filtre appliqué |
+|---|---|---|---|
+| ![](screenshots/mobile-accueil.png) | ![](screenshots/mobile-liste-categories.png) | ![](screenshots/mobile-tiroir-filtres.png) | ![](screenshots/mobile-filtre-reponses-2026.png) |
+
+Tablette (768 px) : ![](screenshots/tablette-liste-categories.png)
 
 ## Source des données
 
@@ -57,11 +69,11 @@ pip install openpyxl
 python3 scripts/build-data.py /chemin/vers/Signets_X.xlsx
 ```
 
-Sans argument, le script lit `/workspace/x_signets/Signets_X.xlsx`. Il écrit `data/signets.json`, trie par date (plus récent d'abord) et ignore les doublons de lien.
+Sans argument, le script lit `/workspace/x_signets/Signets_X.xlsx`. Il écrit `data/signets.json`, trie par date (plus récent d'abord) et ignore les doublons de lien. Il ne contient aucune liste de catégories : il recopie celles de l'Excel telles quelles.
 
 ## Tests
 
-`scripts/test-site.py` (Playwright + Chrome) vérifie le total de 948, chaque filtre, le tri, l'URL, le mobile sans débordement, le pied de page, et refait les captures :
+`scripts/test-site.py` (Playwright + Chrome) vérifie le total de 948, chaque filtre (dont la liste des catégories au clic, au toucher et au clavier), le tri, l'URL, l'absence de débordement à 1280, 768 et 390 px, le pied de page, et refait les captures. Il charge aussi une version modifiée du JSON en mémoire (une catégorie retirée, une ajoutée, un signet sans catégorie) pour prouver que la liste est dynamique ; rien n'est écrit sur le disque.
 
 ```bash
 python3 scripts/test-site.py http://localhost:8000/ screenshots
