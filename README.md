@@ -46,7 +46,7 @@ Tablette (768 px) : ![](screenshots/tablette-liste-categories.png)
 
 ## Source des données
 
-Le fichier Excel `Signets_X.xlsx` tenu par le bot **X Signets** (sur GTR2018 : `D:\GrokBot\X\Signets_X.xlsx`), feuille « Signets », tableau « Tableau1 ».
+Le fichier Excel `Signets_X.xlsx` tenu par le bot **X Signets** (sur GTR2018 : `C:\Users\gtremblay\Documents\GrokBot\X\Signets_X.xlsx`), feuille « Signets », tableau « Tableau1 ».
 Colonnes : Catégorie, Date (date de publication du post), Soumis par (« @compte (Nom affiché) »), Sujet, Brève description, Lien X (clé unique), Type, Langue, J'aime.
 
 Le site lit uniquement `data/signets.json`, généré à partir de l'Excel. L'Excel n'est jamais modifié.
