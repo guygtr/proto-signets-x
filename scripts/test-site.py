@@ -150,5 +150,49 @@ with sync_playwright() as pw:
     d.locator('#catList li[data-cat="Catégorie test ajoutée"]').tap(); d.wait_for_timeout(250)
     check("dyn : filtre nouvelle catégorie", cnt(d)==newc, f"{cnt(d)} vs {newc}")
     check("aucune erreur JS (dyn)", not errs, errs)
+    # ---------- Compteur « nouveaux » ----------
+    real = json.load(open("/workspace/prototypes/proto-signets-x/data/signets.json"))
+    nreal = sum(1 for x in real["signets"] if x.get("nouveau"))
+    check("nouveaux : champ nouveaux du JSON = nb de signets marqués", real.get("nouveaux")==nreal and all("nouveau" in x for x in real["signets"]), nreal)
+    r = b.new_page(viewport={"width":1280,"height":800}); r.on("pageerror", lambda e: errs.append(str(e)))
+    r.goto(BASE); r.wait_for_selector(".card")
+    check("nouveaux : compteur de l'en-tête = données réelles", r.inner_text("#newN")==str(nreal) and r.locator(".card .new-badge").count()==sum(1 for x in real["signets"][:30] if x.get("nouveau")), r.inner_text("#newN"))
+    if nreal == 0: check("nouveaux : bouton désactivé quand 0", r.is_disabled("#newBtn"))
+    r.close()
+    mod2 = copy.deepcopy(real); NEWL = [x["lien"] for x in mod2["signets"][2:9:2]] + [mod2["signets"][-1]["lien"]]
+    for x in mod2["signets"]: x["nouveau"] = x["lien"] in NEWL
+    mod2["nouveaux"] = len(NEWL); mod2["precedente"] = "2026-10-20 10:00"; mod2["genere"] = "2026-10-27 08:00"
+    route = lambda r_: r_.fulfill(status=200, content_type="application/json", body=json.dumps(mod2))
+    for vw, vh, mob in ((1280, 800, False), (390, 844, True)):
+        q = b.new_page(viewport={"width":vw,"height":vh}, device_scale_factor=2 if mob else 1, is_mobile=mob, has_touch=mob)
+        q.on("pageerror", lambda e: errs.append(str(e))); q.route("**/data/signets.json*", route)
+        q.goto(BASE); q.wait_for_selector(".card"); tag = "mobile" if mob else "desktop"
+        check(f"nouveaux {tag} : compteur = 5", q.inner_text("#newN")=="5" and not q.is_disabled("#newBtn"))
+        check(f"nouveaux {tag} : badges Nouveau dans les 30 premières cartes = 4", q.locator(".card .new-badge").count()==4)
+        bb = q.locator("#newBtn").bounding_box(); check(f"nouveaux {tag} : bouton ≥ 40 px et dans l'écran", bb["height"]>=40 and bb["x"]+bb["width"]<=vw and overflow(q)<=0, bb)
+        (q.tap if mob else q.click)("#newBtn"); q.wait_for_timeout(250)
+        check(f"nouveaux {tag} : filtre Nouveaux seulement = 5", cnt(q)==5 and q.locator(".card").count()==5 and q.locator(".card .new-badge").count()==5 and "nouveaux=1" in q.url)
+        check(f"nouveaux {tag} : puce de filtre actif", "Nouveaux seulement" in q.inner_text("#active"))
+        if SHOTS: q.screenshot(path=f"{SHOTS}/{tag}-nouveaux.png")
+        if not mob:
+            q.click("#catBtn"); check("nouveaux : liste des catégories suit le filtre (Toutes = 5)", opt_n(q, "")==5); q.keyboard.press("Escape")
+            u = q.url; q.goto(u); q.wait_for_selector(".card"); check("nouveaux : état restauré depuis l'URL", cnt(q)==5 and q.get_attribute("#newBtn","aria-pressed")=="true")
+            q.click("#active [data-clear='nouv']"); q.wait_for_timeout(250); check("nouveaux : retirer la puce → 948", cnt(q)==948 and "nouveaux" not in q.url)
+            q.click("#newBtn"); q.click(".af-reset"); q.wait_for_timeout(250); check("nouveaux : Tout effacer → 948", cnt(q)==948)
+            check("nouveaux : méta indique la génération précédente", "5 nouveau(x) depuis la génération du 2026-10-20 10:00" in q.inner_text("#meta"))
+        else:
+            check("nouveaux mobile : sans débordement filtre actif", overflow(q)<=0)
+        q.close()
+    # Script : un signet absent de la génération précédente est « nouveau » ; relancer sans changement garde la même base
+    import subprocess, tempfile, shutil, os
+    tmp = tempfile.mkdtemp(); shutil.copytree("/workspace/prototypes/proto-signets-x/scripts", f"{tmp}/scripts"); os.makedirs(f"{tmp}/data")
+    prev = copy.deepcopy(real); prev["signets"] = prev["signets"][3:]; prev["genere"] = "2026-10-20 10:00"
+    json.dump(prev, open(f"{tmp}/data/signets.json", "w"))
+    xl = "/workspace/x_signets/Signets_X.xlsx"
+    for _ in range(2): subprocess.run(["python3", f"{tmp}/scripts/build-data.py", xl], check=True, capture_output=True)
+    out = json.load(open(f"{tmp}/data/signets.json"))
+    check("script : 3 nouveaux détectés et conservés au 2e build", out["nouveaux"]==3 and [x["nouveau"] for x in out["signets"][:4]]==[True,True,True,False] and out["precedente"]=="2026-10-20 10:00")
+    shutil.rmtree(tmp)
+    check("aucune erreur JS (nouveaux)", not errs, errs)
     b.close()
 print("RESULTAT:", "OK" if ok else "ECHEC")

@@ -46,7 +46,10 @@
           </select>
         </label>
       </div>
-      <p id="count" class="count" aria-live="polite">Chargement…</p>
+      <div class="countbar">
+        <p id="count" class="count" aria-live="polite">Chargement…</p>
+        <button id="newBtn" class="new-btn" type="button" aria-pressed="false" title="Signets ajoutés depuis la génération précédente"><span class="new-lbl">Nouveaux seulement</span><span class="n" id="newN">0</span></button>
+      </div>
       <div id="active" class="active-filters"></div>
     </header>
 

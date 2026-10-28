@@ -7,14 +7,14 @@
     q: $("#q"), sort: $("#sort"), feed: $("#feed"), more: $("#more"), empty: $("#empty"), count: $("#count"),
     catBtn: $("#catBtn"), catList: $("#catList"), catBtnLbl: $("#catBtnLbl"), catBtnN: $("#catBtnN"), catBtnDot: $("#catBtnDot"), active: $("#active"), from: $("#from"), to: $("#to"),
     presets: $("#presets"), types: $("#types"), langs: $("#langs"), byInput: $("#byInput"), byList: $("#byList"),
-    bySel: $("#bySel"), filters: $("#filters"), scrim: $("#scrim"), badge: $("#filterBadge"), meta: $("#meta")
+    bySel: $("#bySel"), newBtn: $("#newBtn"), newN: $("#newN"), filters: $("#filters"), scrim: $("#scrim"), badge: $("#filterBadge"), meta: $("#meta")
   };
   const nf = new Intl.NumberFormat("fr-CA");
   const nfc = new Intl.NumberFormat("fr-CA", { notation: "compact", maximumFractionDigits: 1 });
   const df = new Intl.DateTimeFormat("fr-CA", { day: "numeric", month: "short", year: "numeric" });
 
   let all = [], cats = [], catColor = {}, catActive = -1, authors = [], results = [], shown = 0;
-  const st = { q: "", cat: "", from: "", to: "", by: "", type: [], lang: [], sort: "recent", preset: "" };
+  const st = { nouv: false, q: "", cat: "", from: "", to: "", by: "", type: [], lang: [], sort: "recent", preset: "" };
 
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const norm = s => String(s).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -47,10 +47,11 @@
     st.q = p.get("q") || ""; st.cat = p.get("cat") || ""; st.from = p.get("du") || ""; st.to = p.get("au") || "";
     st.by = p.get("par") || ""; st.type = (p.get("type") || "").split(",").filter(Boolean);
     st.lang = (p.get("langue") || "").split(",").filter(Boolean); st.sort = p.get("tri") || "recent"; st.preset = p.get("periode") || "";
+    st.nouv = p.get("nouveaux") === "1";
   }
   function writeURL() {
     const p = new URLSearchParams();
-    if (st.q) p.set("q", st.q); if (st.cat) p.set("cat", st.cat);
+    if (st.nouv) p.set("nouveaux", "1"); if (st.q) p.set("q", st.q); if (st.cat) p.set("cat", st.cat);
     if (st.preset) p.set("periode", st.preset); else { if (st.from) p.set("du", st.from); if (st.to) p.set("au", st.to); }
     if (st.by) p.set("par", st.by); if (st.type.length) p.set("type", st.type.join(","));
     if (st.lang.length) p.set("langue", st.lang.join(",")); if (st.sort !== "recent") p.set("tri", st.sort);
@@ -68,6 +69,7 @@
   function filtered(skip) {
     const terms = norm(st.q).split(/\s+/).filter(Boolean);
     return all.filter(x =>
+      (!st.nouv || x.nouveau) &&
       (skip === "cat" || !st.cat || x.categorie === st.cat) &&
       (!st.from || x.date >= st.from) && (!st.to || x.date <= st.to) &&
       (!st.by || x.handle === st.by) &&
@@ -101,7 +103,7 @@
     return `<article class="card" data-lien="${esc(x.lien)}">
       ${avatar(x.handle)}
       <div class="c-body">
-        <div class="c-head"><span class="c-name">${hl(x.nom)}</span><span class="c-handle">${hl(x.handle)}</span><span class="c-sep">·</span><time class="c-date" datetime="${x.date}">${df.format(parseD(x.date))}</time></div>
+        <div class="c-head"><span class="c-name">${hl(x.nom)}</span><span class="c-handle">${hl(x.handle)}</span><span class="c-sep">·</span><time class="c-date" datetime="${x.date}">${df.format(parseD(x.date))}</time>${x.nouveau ? `<span class="new-badge">Nouveau</span>` : ""}</div>
         <button class="chip" data-cat="${esc(x.categorie)}" style="color:${c};border-color:${c}66" title="Filtrer par cette catégorie"><span class="dot" style="width:6px;height:6px;border-radius:50%;background:${c}"></span>${esc(x.categorie)}</button>
         <h3 class="c-subject">${hl(x.sujet)}</h3>
         <p class="c-desc">${hl(x.description)}</p>
@@ -175,6 +177,7 @@
   function renderActive() {
     const chips = [];
     const add = (label, key, val) => chips.push(`<span class="af">${esc(label)}<button aria-label="Retirer ${esc(label)}" data-clear="${key}" data-val="${esc(val || "")}">✕</button></span>`);
+    if (st.nouv) add("Nouveaux seulement", "nouv");
     if (st.q) add(`« ${st.q} »`, "q");
     if (st.cat) add(st.cat, "cat");
     if (st.from || st.to) add(st.preset && /^\d{4}$/.test(st.preset) ? st.preset : `${st.from ? df.format(parseD(st.from)) : "…"} → ${st.to ? df.format(parseD(st.to)) : "…"}`, "date");
@@ -194,13 +197,16 @@
     shown = 0; el.feed.innerHTML = ""; renderMore();
     el.count.innerHTML = `<b>${nf.format(results.length)}</b> signet${results.length > 1 ? "s" : ""}${results.length !== all.length ? ` sur ${nf.format(all.length)}` : ""}`;
     el.empty.hidden = results.length > 0;
+    const nNew = all.filter(x => x.nouveau).length;
+    el.newN.textContent = nf.format(nNew); el.newBtn.setAttribute("aria-pressed", st.nouv);
+    el.newBtn.disabled = !nNew && !st.nouv; el.newBtn.classList.toggle("has-new", nNew > 0);
     renderCats(); renderToggles(el.types, "type", "type", ["Post", "Citation", "Réponse"].filter(v => all.some(x => x.type === v)));
     renderToggles(el.langs, "lang", "langue", langs);
     renderBy(); renderActive(); syncInputs(); writeURL();
   }
   let langs = [];
 
-  function reset() { Object.assign(st, { q: "", cat: "", from: "", to: "", by: "", type: [], lang: [], preset: "", sort: "recent" }); el.byInput.value = ""; update(); }
+  function reset() { Object.assign(st, { nouv: false, q: "", cat: "", from: "", to: "", by: "", type: [], lang: [], preset: "", sort: "recent" }); el.byInput.value = ""; update(); }
   function toggle(key, v) { const a = st[key]; const i = a.indexOf(v); i > -1 ? a.splice(i, 1) : a.push(v); update(); }
   function openFilters(open) {
     el.filters.classList.toggle("open", open); el.scrim.hidden = !open;
@@ -245,9 +251,11 @@
       const k = t.dataset.clear;
       if (k === "date") { st.from = st.to = ""; st.preset = ""; }
       else if (k === "type" || k === "lang") st[k] = st[k].filter(v => v !== t.dataset.val);
+      else if (k === "nouv") st.nouv = false;
       else st[k] = "";
       return update();
     }
+    if (t.id === "newBtn") { st.nouv = !st.nouv; return update(); }
     if (t.id === "openFilters") return openFilters(true);
     if (t.id === "closeFilters" || t.id === "applyFilters") return openFilters(false);
   });
@@ -256,7 +264,7 @@
 
   /* ---------- Chargement ---------- */
   fetch("data/signets.json", { cache: "no-cache" }).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(d => {
-    all = d.signets.map(x => ({ ...x, categorie: String(x.categorie || "").trim() || NO_CAT, _s: norm(`${x.sujet} ${x.description} ${x.soumisPar}`) }));
+    all = d.signets.map(x => ({ ...x, categorie: String(x.categorie || "").trim() || NO_CAT, nouveau: x.nouveau === true, _s: norm(`${x.sujet} ${x.description} ${x.soumisPar}`) }));
     const cc = countBy(all, "categorie");
     cats = Object.keys(cc).sort((a, b) => cc[b] - cc[a] || a.localeCompare(b, "fr"));
     catColor = assignColors(cats);
@@ -265,7 +273,8 @@
     all.forEach(x => { (am[x.handle] ||= { handle: x.handle, nom: x.nom, n: 0 }).n++; });
     authors = Object.values(am).sort((a, b) => b.n - a.n || a.handle.localeCompare(b.handle)).map(a => ({ ...a, _s: norm(`${a.handle} ${a.nom}`) }));
     const dates = all.map(x => x.date).sort();
-    el.meta.textContent = `${nf.format(all.length)} signets · ${authors.length} comptes · posts du ${df.format(parseD(dates[0]))} au ${df.format(parseD(dates.at(-1)))} · données du ${d.genere}`;
+    el.meta.textContent = `${nf.format(all.length)} signets · ${authors.length} comptes · posts du ${df.format(parseD(dates[0]))} au ${df.format(parseD(dates.at(-1)))} · données du ${d.genere}` +
+      (d.precedente && d.precedente !== d.genere ? ` · ${nf.format(all.filter(x => x.nouveau).length)} nouveau(x) depuis la génération du ${d.precedente}` : " · aucun nouveau depuis la génération précédente");
     readURL(); if (st.preset) applyPreset(st.preset);
     update();
   }).catch(err => { el.count.textContent = `Impossible de charger les signets (${err.message}).`; });

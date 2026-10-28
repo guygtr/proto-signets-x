@@ -24,7 +24,21 @@ Aucun logo officiel de X n'est utilisé : la marque « Signets » est une créat
 - Les filtres sont gardés dans l'URL : on peut partager ou mettre en favori une vue filtrée
 - Affichage par lots de 30 avec « Charger plus » pour rester rapide
 
-Sur mobile, la liste des catégories reste sous la barre de recherche et les autres filtres s'ouvrent dans un tiroir. Testé à 1280×800 (bureau), 768 px (tablette) et 390×844 (mobile) : aucun débordement, liste entièrement visible.
+Sur mobile, la liste des catégories reste sous la barre de recherche et les autres filtres s'ouvrent dans un tiroir. Testé à 1280×800 (bureau), 768 px (tablette) et 390×844 (mobile) : aucun débordement, liste entièrement visible, boutons et champs d'au moins 40 px de haut.
+
+### Nouveaux signets
+
+Chaque régénération compare les signets à ceux de la **génération précédente** :
+
+- un badge vert **« Nouveau »** marque chaque signet ajouté depuis la génération précédente ;
+- dans l'en-tête, le bouton **« Nouveaux seulement »** affiche combien il y en a et sert de filtre rapide (gardé dans l'URL : `?nouveaux=1`, combinable avec les autres filtres) ;
+- le bas du panneau de filtres rappelle la date de la génération précédente.
+
+Données actuelles : instantané du 24 oct. 2026 (948 signets). L'Excel n'a pas changé depuis, donc le compteur affiche **0** et le bouton est grisé. Il s'activera dès la prochaine version de l'Excel déposée par X Signets.
+
+| Exemple simulé (5 nouveaux) : bureau | Mobile |
+|---|---|
+| ![](screenshots/desktop-nouveaux.png) | ![](screenshots/mobile-nouveaux.png) |
 
 ### Catégories 100 % dynamiques
 
@@ -71,9 +85,11 @@ python3 scripts/build-data.py /chemin/vers/Signets_X.xlsx
 
 Sans argument, le script lit `/workspace/x_signets/Signets_X.xlsx`. Il écrit `data/signets.json`, trie par date (plus récent d'abord) et ignore les doublons de lien. Il ne contient aucune liste de catégories : il recopie celles de l'Excel telles quelles.
 
+Compteur « nouveaux » : avant d'écrire, le script relit l'ancien `data/signets.json`. Si la liste des liens X a changé, l'ancienne liste devient la base de comparaison et est sauvegardée dans `data/previous-ids.json`. Si rien n'a changé, la base reste la même (les badges ne disparaissent pas) et la date de génération n'est pas modifiée. Chaque signet reçoit un champ `nouveau` (vrai/faux), et le JSON indique `nouveaux` (le nombre) et `precedente` (la date de la génération de comparaison).
+
 ## Tests
 
-`scripts/test-site.py` (Playwright + Chrome) vérifie le total de 948, chaque filtre (dont la liste des catégories au clic, au toucher et au clavier), le tri, l'URL, l'absence de débordement à 1280, 768 et 390 px, le pied de page, et refait les captures. Il charge aussi une version modifiée du JSON en mémoire (une catégorie retirée, une ajoutée, un signet sans catégorie) pour prouver que la liste est dynamique ; rien n'est écrit sur le disque.
+`scripts/test-site.py` (Playwright + Chrome) vérifie le total de 948, chaque filtre (dont la liste des catégories au clic, au toucher et au clavier), le tri, l'URL, l'absence de débordement à 1280, 768 et 390 px, le pied de page, et refait les captures. Il vérifie aussi le compteur « nouveaux » (données réelles, puis 5 nouveaux simulés en mémoire à 1280 et 390 px : badges, filtre, URL, puce, taille tactile ≥ 40 px) et le script de comparaison sur une copie temporaire. 67 vérifications au total. Il charge aussi une version modifiée du JSON en mémoire (une catégorie retirée, une ajoutée, un signet sans catégorie) pour prouver que la liste est dynamique ; rien n'est écrit sur le disque.
 
 ```bash
 python3 scripts/test-site.py http://localhost:8000/ screenshots

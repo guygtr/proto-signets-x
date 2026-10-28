@@ -158,3 +158,24 @@ mark{background:rgba(29,155,240,.3);color:inherit;border-radius:3px;padding:0 1p
   .topbar .brand-name{display:inline}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* Cibles tactiles : au moins 40 px de haut partout (ordinateur et cellulaire) */
+.catdd-btn,.sort select,.presets button,.toggles button,.btn-reset,.btn-primary,.btn-more{min-height:40px}
+.chip{min-height:40px;margin-top:2px;padding:2px 12px}
+.see{min-height:40px;padding:4px 12px}
+.af button,.by-selected button{width:40px;height:40px}
+.dates input,.combo input{min-height:40px}
+
+/* Compteur « nouveaux » (en-tête) + badge sur les cartes */
+.countbar{display:flex;align-items:center;justify-content:space-between;gap:var(--s2);padding:0 var(--s3) var(--s2) 0}
+.countbar .count{padding-bottom:0}
+.new-btn{flex:none;display:inline-flex;align-items:center;gap:6px;min-height:40px;background:none;border:1px solid var(--line);border-radius:var(--pill);padding:4px 8px 4px 12px;font-size:13px;font-weight:700;color:var(--muted)}
+.new-btn .n{min-width:22px;padding:1px 7px;border-radius:var(--pill);background:#202327;color:var(--text);font-variant-numeric:tabular-nums;text-align:center}
+.new-btn.has-new{color:var(--text);border-color:#1f6f4a}
+.new-btn.has-new .n{background:#00ba7c;color:#00140c}
+.new-btn:hover:not(:disabled){background:#181a1d}
+.new-btn[aria-pressed="true"],.new-btn[aria-pressed="true"]:hover:not(:disabled){background:#00ba7c;border-color:#00ba7c;color:#00140c}
+.new-btn[aria-pressed="true"] .n{background:#00140c;color:#7fe0b8}
+.new-btn:disabled{opacity:.6;cursor:default}
+.new-badge{margin-left:4px;align-self:center;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#00140c;background:#00ba7c;border-radius:var(--pill);padding:1px 8px}
+@media (max-width:359px){.new-btn .new-lbl{font-size:12px}}
