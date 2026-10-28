@@ -3,6 +3,7 @@ from playwright.sync_api import sync_playwright
 BASE = sys.argv[1] if len(sys.argv) > 1 else "http://localhost:8765/"
 SHOTS = sys.argv[2] if len(sys.argv) > 2 else None
 data = json.load(open("/workspace/prototypes/proto-signets-x/data/signets.json"))["signets"]
+N = len(data)
 ok = True
 def check(name, cond, extra=""):
     global ok; ok &= bool(cond); print(("PASS " if cond else "FAIL ") + name, extra)
@@ -24,12 +25,12 @@ with sync_playwright() as pw:
     p = b.new_page(viewport={"width":1280,"height":800})
     errs=[]; p.on("pageerror", lambda e: errs.append(str(e)))
     p.goto(BASE); p.wait_for_selector(".card")
-    check("total 948", cnt(p)==948 and len(data)==948, p.inner_text("#count"))
+    check("total 948", cnt(p)==N and len(data)==N, p.inner_text("#count"))
     check("30 cartes initiales", p.locator(".card").count()==30)
     if SHOTS: p.screenshot(path=f"{SHOTS}/desktop-accueil.png")
     if not SHOTS or "live" not in SHOTS:
         while p.is_visible("#more"): p.click("#more")
-        check("toutes les cartes chargées = 948", p.locator(".card").count()==948)
+        check("toutes les cartes chargées = 948", p.locator(".card").count()==N)
     p.goto(BASE); p.wait_for_selector(".card")
     # catégorie
     cat="Tesla et Optimus"; exp=sum(1 for x in data if x["categorie"]==cat)
@@ -37,7 +38,7 @@ with sync_playwright() as pw:
     p.click("#catBtn"); p.wait_for_selector("#catList:not([hidden])")
     opts = p.eval_on_selector_all("#catList li", "l => l.map(x => x.dataset.cat)")
     check("liste = Toutes + catégories du JSON", opts[0]=="" and sorted(opts[1:])==cats_data, f"{len(opts)-1} catégories")
-    check("liste « Toutes (948) »", p.inner_text("#catList li >> nth=0").split("\n")[0].strip()=="Toutes" and opt_n(p, "")==948)
+    check("liste « Toutes (948) »", p.inner_text("#catList li >> nth=0").split("\n")[0].strip()=="Toutes" and opt_n(p, "")==N)
     check("compte Tesla dans la liste = 119", opt_n(p, cat)==exp==119)
     check("pastilles de couleur", p.eval_on_selector_all("#catList li .dot", "l => l.slice(1).every(d => d.style.background)"))
     check("liste lisible 1280 (dans l'écran)", list_fits(p))
@@ -46,13 +47,13 @@ with sync_playwright() as pw:
     check("bouton affiche Tesla", cat in p.inner_text("#catBtn") and "119" in p.inner_text("#catBtn"))
     check("URL cat", "cat=" in p.url)
     p.click("#types [data-type='Citation']"); p.click("#catBtn")
-    expc=sum(1 for x in data if x["categorie"]==cat and x["type"]=="Citation"); check("comptes suivent les autres filtres", opt_n(p, cat)==expc and opt_n(p, "")==175, f"{opt_n(p, cat)} vs {expc}")
+    expc=sum(1 for x in data if x["categorie"]==cat and x["type"]=="Citation"); check("comptes suivent les autres filtres", opt_n(p, cat)==expc and opt_n(p, "")==sum(1 for x in data if x["type"]=="Citation"), f"{opt_n(p, cat)} vs {expc}")
     p.keyboard.press("Escape"); p.click("#types [data-type='Citation']")
     # clavier : focus bouton, flèche bas, Fin, Entrée
     p.click(".af-reset"); p.focus("#catBtn"); p.keyboard.press("ArrowDown"); p.keyboard.press("End"); p.keyboard.press("Enter"); p.wait_for_timeout(250)
     last = opts[-1]; check("clavier (↓, Fin, Entrée)", f"cat=" in p.url and cnt(p)==sum(1 for x in data if x["categorie"]==last), last)
     check("focus revient au bouton", p.evaluate("document.activeElement.id")=="catBtn")
-    p.keyboard.press("ArrowDown"); p.keyboard.press("Home"); p.keyboard.press("Enter"); p.wait_for_timeout(250); check("clavier retour à Toutes", cnt(p)==948)
+    p.keyboard.press("ArrowDown"); p.keyboard.press("Home"); p.keyboard.press("Enter"); p.wait_for_timeout(250); check("clavier retour à Toutes", cnt(p)==N)
     # clic sur la puce d'une carte → règle la liste
     chipcat = p.locator(".card .chip").first.get_attribute("data-cat"); p.locator(".card .chip").first.click(); p.wait_for_timeout(250)
     check("puce de carte règle la liste", chipcat in p.inner_text("#catBtn") and cnt(p)==sum(1 for x in data if x["categorie"]==chipcat))
@@ -66,7 +67,7 @@ with sync_playwright() as pw:
     p.click("[data-preset='2025']")
     p.fill("#from","2026-10-01"); p.dispatch_event("#from","change"); p.fill("#to","2026-10-15"); p.dispatch_event("#to","change")
     exp=sum(1 for x in data if "2026-10-01"<=x["date"]<="2026-10-15"); check("plage de dates", cnt(p)==exp, f"{cnt(p)} vs {exp}")
-    p.click("[data-reset] >> nth=0") if False else p.click(".af-reset"); check("reset", cnt(p)==948)
+    p.click("[data-reset] >> nth=0") if False else p.click(".af-reset"); check("reset", cnt(p)==N)
     # soumis par
     p.fill("#byInput","elon"); p.wait_for_selector("#byList li[data-by]")
     p.click("#byList li[data-by='@elonmusk']"); exp=sum(1 for x in data if x["handle"]=="@elonmusk"); check("soumis par @elonmusk", cnt(p)==exp, f"{cnt(p)} vs {exp}")
@@ -99,7 +100,7 @@ with sync_playwright() as pw:
     m = b.new_page(viewport={"width":390,"height":844}, device_scale_factor=2, is_mobile=True, has_touch=True)
     m.on("pageerror", lambda e: errs.append(str(e)))
     m.goto(BASE); m.wait_for_selector(".card")
-    check("mobile 948", cnt(m)==948)
+    check("mobile 948", cnt(m)==N)
     sw = m.evaluate("document.documentElement.scrollWidth"); check("mobile sans débordement horizontal", sw<=390, sw)
     if SHOTS: m.screenshot(path=f"{SHOTS}/mobile-accueil.png")
     m.click("#openFilters"); m.wait_for_timeout(400); check("tiroir filtres ouvert", m.is_visible("#types"))
@@ -122,7 +123,7 @@ with sync_playwright() as pw:
     t = b.new_page(viewport={"width":768,"height":1024}, has_touch=True)
     t.on("pageerror", lambda e: errs.append(str(e)))
     t.goto(BASE); t.wait_for_selector(".card")
-    check("tablette 948 + sans débordement", cnt(t)==948 and overflow(t)<=0, overflow(t))
+    check("tablette 948 + sans débordement", cnt(t)==N and overflow(t)<=0, overflow(t))
     t.tap("#catBtn"); t.wait_for_timeout(200)
     check("tablette liste ouverte, lisible, sans débordement", list_fits(t) and overflow(t)<=0)
     if SHOTS: t.screenshot(path=f"{SHOTS}/tablette-liste-categories.png")
@@ -140,7 +141,7 @@ with sync_playwright() as pw:
     d.on("pageerror", lambda e: errs.append(str(e)))
     d.route("**/data/signets.json*", lambda r: r.fulfill(status=200, content_type="application/json", body=json.dumps(mod)))
     d.goto(BASE + "?cat=Divers%20et%20humour"); d.wait_for_selector(".card")
-    check("dyn : cat retirée dans l'URL → Toutes", d.inner_text("#catBtnLbl")=="Toutes" and cnt(d)==948 and "cat=" not in d.url)
+    check("dyn : cat retirée dans l'URL → Toutes", d.inner_text("#catBtnLbl")=="Toutes" and cnt(d)==N and "cat=" not in d.url)
     d.tap("#catBtn"); d.wait_for_timeout(200)
     opts = d.eval_on_selector_all("#catList li", "l => l.map(x => x.dataset.cat)")
     exp_cats = sorted(set((x["categorie"] or "Sans catégorie") for x in mod["signets"]))
@@ -177,8 +178,8 @@ with sync_playwright() as pw:
         if not mob:
             q.click("#catBtn"); check("nouveaux : liste des catégories suit le filtre (Toutes = 5)", opt_n(q, "")==5); q.keyboard.press("Escape")
             u = q.url; q.goto(u); q.wait_for_selector(".card"); check("nouveaux : état restauré depuis l'URL", cnt(q)==5 and q.get_attribute("#newBtn","aria-pressed")=="true")
-            q.click("#active [data-clear='nouv']"); q.wait_for_timeout(250); check("nouveaux : retirer la puce → 948", cnt(q)==948 and "nouveaux" not in q.url)
-            q.click("#newBtn"); q.click(".af-reset"); q.wait_for_timeout(250); check("nouveaux : Tout effacer → 948", cnt(q)==948)
+            q.click("#active [data-clear='nouv']"); q.wait_for_timeout(250); check("nouveaux : retirer la puce → 948", cnt(q)==N and "nouveaux" not in q.url)
+            q.click("#newBtn"); q.click(".af-reset"); q.wait_for_timeout(250); check("nouveaux : Tout effacer → 948", cnt(q)==N)
             check("nouveaux : méta indique la génération précédente", "5 nouveau(x) depuis la génération du 2026-10-20 10:00" in q.inner_text("#meta"))
         else:
             check("nouveaux mobile : sans débordement filtre actif", overflow(q)<=0)
