@@ -32,7 +32,7 @@ with sync_playwright() as pw:
         check("toutes les cartes chargées = 948", p.locator(".card").count()==948)
     p.goto(BASE); p.wait_for_selector(".card")
     # catégorie
-    cat="Tesla – véhicules, FSD et Optimus"; exp=sum(1 for x in data if x["categorie"]==cat)
+    cat="Tesla et Optimus"; exp=sum(1 for x in data if x["categorie"]==cat)
     cats_data = sorted(set(x["categorie"] for x in data))
     p.click("#catBtn"); p.wait_for_selector("#catList:not([hidden])")
     opts = p.eval_on_selector_all("#catList li", "l => l.map(x => x.dataset.cat)")
@@ -113,8 +113,8 @@ with sync_playwright() as pw:
     check("mobile liste lisible (dans l'écran) et sans débordement", list_fits(m) and overflow(m)<=0)
     h = m.eval_on_selector_all("#catList li", "l => Math.min(...l.map(x => x.getBoundingClientRect().height))"); check("mobile options ≥ 40 px (tactile)", h>=40, h)
     if SHOTS: m.screenshot(path=f"{SHOTS}/mobile-liste-categories.png")
-    m.locator('#catList li[data-cat="Humour et sketchs"]').tap(); m.wait_for_timeout(300)
-    check("mobile liste Humour 39", cnt(m)==39)
+    m.locator('#catList li[data-cat="Divers et humour"]').tap(); m.wait_for_timeout(300)
+    check("mobile liste Divers et humour 179", cnt(m)==179)
     if SHOTS: m.screenshot(path=f"{SHOTS}/mobile-categorie-humour.png")
     m.evaluate("window.scrollTo(0,document.body.scrollHeight)"); m.wait_for_timeout(200)
     if SHOTS: m.screenshot(path=f"{SHOTS}/mobile-pied-de-page.png")
@@ -126,7 +126,7 @@ with sync_playwright() as pw:
     t.tap("#catBtn"); t.wait_for_timeout(200)
     check("tablette liste ouverte, lisible, sans débordement", list_fits(t) and overflow(t)<=0)
     if SHOTS: t.screenshot(path=f"{SHOTS}/tablette-liste-categories.png")
-    t.locator('#catList li[data-cat="Tesla – véhicules, FSD et Optimus"]').tap(); t.wait_for_timeout(250)
+    t.locator('#catList li[data-cat="Tesla et Optimus"]').tap(); t.wait_for_timeout(250)
     check("tablette tap Tesla 119", cnt(t)==119)
     check("desktop 1280 sans débordement", overflow(p)<=0)
     check("aucune erreur JS", not errs, errs)
@@ -134,17 +134,17 @@ with sync_playwright() as pw:
     import copy
     mod = copy.deepcopy(json.load(open("/workspace/prototypes/proto-signets-x/data/signets.json")))
     for x in mod["signets"]:
-        if x["categorie"] == "Humour et sketchs": x["categorie"] = "Catégorie test ajoutée"
+        if x["categorie"] == "Divers et humour": x["categorie"] = "Catégorie test ajoutée"
     mod["signets"][0]["categorie"] = ""
     d = b.new_page(viewport={"width":390,"height":844}, is_mobile=True, has_touch=True)
     d.on("pageerror", lambda e: errs.append(str(e)))
     d.route("**/data/signets.json*", lambda r: r.fulfill(status=200, content_type="application/json", body=json.dumps(mod)))
-    d.goto(BASE + "?cat=Humour%20et%20sketchs"); d.wait_for_selector(".card")
+    d.goto(BASE + "?cat=Divers%20et%20humour"); d.wait_for_selector(".card")
     check("dyn : cat retirée dans l'URL → Toutes", d.inner_text("#catBtnLbl")=="Toutes" and cnt(d)==948 and "cat=" not in d.url)
     d.tap("#catBtn"); d.wait_for_timeout(200)
     opts = d.eval_on_selector_all("#catList li", "l => l.map(x => x.dataset.cat)")
     exp_cats = sorted(set((x["categorie"] or "Sans catégorie") for x in mod["signets"]))
-    check("dyn : liste = catégories du JSON modifié", sorted(opts[1:])==exp_cats and "Humour et sketchs" not in opts and "Catégorie test ajoutée" in opts and "Sans catégorie" in opts, f"{len(opts)-1} catégories")
+    check("dyn : liste = catégories du JSON modifié", sorted(opts[1:])==exp_cats and "Divers et humour" not in opts and "Catégorie test ajoutée" in opts and "Sans catégorie" in opts, f"{len(opts)-1} catégories")
     newc = sum(1 for x in mod["signets"] if x["categorie"]=="Catégorie test ajoutée")
     check("dyn : nouvelle catégorie a une couleur", bool(d.locator('#catList li[data-cat="Catégorie test ajoutée"] .dot').get_attribute("style")))
     d.locator('#catList li[data-cat="Catégorie test ajoutée"]').tap(); d.wait_for_timeout(250)
